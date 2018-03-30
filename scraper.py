@@ -9,7 +9,8 @@ import urllib2
 from datetime import datetime
 from bs4 import BeautifulSoup
 
-#### FUNCTIONS 1.0
+#### FUNCTIONS 1.2
+import requests       # import requests for validating urls
 
 def validateFilename(filename):
     filenameregex = '^[a-zA-Z0-9]+_[a-zA-Z0-9]+_[a-zA-Z0-9]+_[0-9][0-9][0-9][0-9]_[0-9QY][0-9]$'
@@ -37,25 +38,23 @@ def validateFilename(filename):
 
 def validateURL(url):
     try:
-        r = urllib2.urlopen(url)
+        r = requests.get(url, allow_redirects=True, timeout=20)
         count = 1
-        while r.getcode() == 500 and count < 4:
+        while r.status_code == 500 and count < 4:
             print ("Attempt {0} - Status code: {1}. Retrying.".format(count, r.status_code))
             count += 1
-            r = urllib2.urlopen(url)
+            r = requests.get(url, allow_redirects=True, timeout=20)
         sourceFilename = r.headers.get('Content-Disposition')
-
         if sourceFilename:
             ext = os.path.splitext(sourceFilename)[1].replace('"', '').replace(';', '').replace(' ', '')
         else:
             ext = os.path.splitext(url)[1]
-        validURL = r.getcode() == 200
-        validFiletype = ext.lower() in ['.csv', '.xls', '.zip', '.xlsx', '.pdf']
+        validURL = r.status_code == 200
+        validFiletype = ext.lower() in ['.csv', '.xls', '.xlsx', '.pdf']
         return validURL, validFiletype
     except:
         print ("Error validating URL.")
         return False, False
-
 
 
 def validate(filename, file_url):
@@ -84,33 +83,33 @@ def convert_mth_strings ( mth_string ):
 
 #### VARIABLES 1.0
 
-entity_id = "FTRGMX_PHNFT_gov"
-url = "http://www.papworthhospital.nhs.uk/content.php?/about/governance/publication_of_spend"
+entity_id = "FTRA2X_RSCHNFT_gov"
+url = "http://www.royalsurrey.nhs.uk/about/expenditure/"
 errors = 0
 data = []
+
 
 #### READ HTML 1.0
 
 html = urllib2.urlopen(url)
 soup = BeautifulSoup(html, 'lxml')
 
-
 #### SCRAPE DATA
-
-
-blocks = soup.find_all('a')
+# print soup
+blocks = soup.find_all('p')
 for block in blocks:
-    if 'Transactions' in block.text:
-        if 'http' not in block['href']:
-            url = 'http://www.royalpapworth.nhs.uk' + block['href']
-        else:
-            url = block['href'].replace('?v2', '')
-        title = block.text
-        csvYr = title.split('- ')[-1].strip()[-4:]
-        csvMth = title.split('- ')[-1].strip()[:3]
+    link = block.find('a', href=True)
+    if link:
+        url = link['href']
+        title = link.text
+        csvMth = title[:3]
+        link_title = url.split('.')[-2]
+        csvYr = link_title[-4:]
+        if u'Expenditure over £30,000 threshold report 2015-16' in csvMth:
+            csvYr = '2015'
+            csvMth = 'Y0'
         csvMth = convert_mth_strings(csvMth.upper())
         data.append([csvYr, csvMth, url])
-
 
 #### STORE DATA 1.0
 
