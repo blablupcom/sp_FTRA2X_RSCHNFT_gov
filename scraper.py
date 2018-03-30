@@ -105,9 +105,9 @@ for block in blocks:
         csvMth = title[:3]
         link_title = url.split('.')[-2]
         csvYr = link_title[-4:]
-        if u'Expenditure over £30,000 threshold report 2015-16' in csvMth:
+        if u'Exp' in csvMth:
             csvYr = '2015'
-            csvMth = 'Y0'
+            csvMth = 'Y1'
         csvMth = convert_mth_strings(csvMth.upper())
         data.append([csvYr, csvMth, url])
 
